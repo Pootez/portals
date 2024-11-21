@@ -170,9 +170,9 @@ class Scene {
                     let mV = ray.getVector()
                     beginShape()
                     vertex(a.x,a.y)
-                    vertex(aV.x*10000,aV.y*10000)
-                    vertex(mV.x*10000,mV.y*10000)
-                    vertex(bV.x*10000,bV.y*10000)
+                    vertex(aV.x*10000 + x,aV.y*10000 + y)
+                    vertex(mV.x*10000 + x,mV.y*10000 + y)
+                    vertex(bV.x*10000 + x,bV.y*10000 + y)
                     vertex(b.x,b.y)
                     endShape()
                 }
