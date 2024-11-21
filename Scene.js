@@ -126,54 +126,49 @@ class Scene {
     }
 
     drawShadows(x, y) {
-        let l = [...this.lines]
-        //l.push(
-        //    new Line(-windowWidth, -windowHeight, windowWidth, -windowHeight),
-        //    new Line(windowWidth, -windowHeight, windowWidth, windowHeight),
-        //    new Line(windowWidth, windowHeight, -windowWidth, windowHeight),
-        //    new Line(-windowWidth, windowHeight, -windowWidth, -windowHeight)
-        //)
+        let lines = [...this.lines]
         this.update()
 
-        let p = this.points.map(obj => atan2(obj.y - y, obj.x - x)).sort((a, b) => a - b)
-        p.push(p[0])
-        let rays = []
-        p.forEach(ang => rays.push(new Line(x, y, x + cos(ang), y + sin(ang))))
+        let sortedAngles = this.points.map(point => atan2(point.y - y, point.x - x)).sort((a, b) => a - b)
+        sortedAngles.push(sortedAngles[0])
+        let rays = sortedAngles.map(angle => new Line(x, y, x + cos(angle), y + sin(angle)))
 
         let visableLine = []
         noStroke()
         fill(100)
         stroke(100)
-        for (let i = 0; i < p.length - 1; i++) {
-            let aRay, bRay
-            aRay = rays[i]
-            bRay = rays[i + 1]
+        for (let i = 0; i < sortedAngles.length - 1; i++) {
+            let leftRay, rightRay
+            leftRay = rays[i]
+            rightRay = rays[i + 1]
 
-            let ang = (p[i] + p[i + 1]) / 2
-            i + 1 == p.length - 1 && (ang += PI)
-            let ray = new Line(x, y, x + cos(ang), y + sin(ang))
+            let aV = leftRay.getVector()
+            let bV = rightRay.getVector()
+            let angleThreshold = (aV.x) * -(bV.y) + (aV.y) * (bV.x) < 0 // If angle between rays is less than 180
 
+            if (angleThreshold) {
+                let middleAngle = (sortedAngles[i] + sortedAngles[i + 1]) / 2 // Get the average of the two angles
+                i + 1 == sortedAngles.length - 1 && (middleAngle += PI) // When the second angle is the smallest, add PI to the average (2PI one of the angles)
+                let middleRay = new Line(x, y, x + cos(middleAngle), y + sin(middleAngle)) // Create a ray from middle angle
+    
+                let rayLines = lines.map(line => {return {line, ray: middleRay.ray(line)}}) // Get ray to line segment
+                    .filter(({ray}) => !!ray) // If ray intersects
+                    .toSorted(({ray: aRay}, {ray: bRay}) => aRay.t - bRay.t) // Sort by closest line segment
+                    .map(({line}) => line) // Return line
+                let closestSegment = rayLines.length > 0 ? rayLines[0] : null // Get closest line segment
 
-            let rayLines = l.filter(obj => ray.ray(obj) != false).sort(((a, b) => ray.ray(a).t - ray.ray(b).t))
-            let line = rayLines.length > 0 ? rayLines[0] : null
+                if (closestSegment != null) {
+                    let leftIntersect = leftRay.intersectInfo(closestSegment)
+                    let rightIntersect = rightRay.intersectInfo(closestSegment)
+                    visableLine.push(new Line(leftIntersect.x, leftIntersect.y, rightIntersect.x, rightIntersect.y))
 
-            let aV = aRay.getVector()
-            let bV = bRay.getVector()
-            let bool = (aV.x) * -(bV.y) + (aV.y) * (bV.x) < 0
-
-            if (bool) {
-                if (line != null) {
-                    let a = aRay.intersectInfo(line)
-                    let b = bRay.intersectInfo(line)
-                    visableLine.push(new Line(a.x, a.y, b.x, b.y))
-
-                    let mV = ray.getVector()
+                    let mV = middleRay.getVector()
                     beginShape()
-                    vertex(a.x,a.y)
+                    vertex(leftIntersect.x,leftIntersect.y)
                     vertex(aV.x*10000 + x,aV.y*10000 + y)
                     vertex(mV.x*10000 + x,mV.y*10000 + y)
                     vertex(bV.x*10000 + x,bV.y*10000 + y)
-                    vertex(b.x,b.y)
+                    vertex(rightIntersect.x,rightIntersect.y)
                     endShape()
                 }
             }
